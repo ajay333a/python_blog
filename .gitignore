@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Quarto and R build files
+*.html
+*.pdf
+*.docx
+*.qmd~
+*.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# VS Code settings
+.vscode/
+
+# Python virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (if using JS tools)
+node_modules/

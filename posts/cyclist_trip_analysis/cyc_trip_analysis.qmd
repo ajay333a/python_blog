@@ -1,0 +1,414 @@
+---
+title: "CYCLIST BIKE SHARE"
+author: "Ajay Shankar A"
+date: "2025-06-17"
+format: 
+  html:
+    page-layout: full
+  docx: default
+categories: [Analysis, Code, EDA]
+---
+
+## Introduction
+
+The analysis is done on **Cyclist Trip Data** obtained from *Coursera Google Data Analytics* course as part of Cap Stone Project.
+
+The data contains month wise travel usage of bikes from the year of 2015-2023. We will be concentrating on data gathered in between *July-2022* to *June-2023* which will cover an entire year.
+
+Let's load the required packages first
+
+-   Loading the required packages i.e., `pandas`, `numpy`, `matplotlib`, and `seaborn`.
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+## Loading and Formatting Data
+
+-   Let's look at the structure of the data in one of the downloaded `.csv` files.
+
+```{python glancing data}
+trp_jul_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202207-divvy-tripdata/202207-divvy-tripdata.csv")
+
+trp_jul_22.info()
+
+```
+
+-   Let's look at the columns and try to understand what they represent
+    -   `ride_id` is the unique identification token generated for each ride that was initiated.
+    -   `rideable_type` indicates the type of bike used for the ride.
+    -   `started_at` and `ended_at` give us the time when the ride began and the ride ended respectively.
+    -   `start_station_name` and `end_station_name` give us the names of stations where ride began and ended respectively.
+    -   `start_station_id` and `end_station_id` are unique ID's given to stations.
+    -   `start_lat` and `start_lng` represent co-ordinates where the ride began.
+    -   `end_lat` and `end_lng` represent co-ordinates where the ride stopped.
+    -   `member_casual` identifies if the rider is a member or casual rider of the bike.
+-   **Lets load data of remaining 11 months.**
+
+```{python loading data}
+#| results : hide
+#| message: false
+
+trp_aug_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202208-divvy-tripdata/202208-divvy-tripdata.csv")
+trp_sep_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202209-divvy-tripdata/202209-divvy-publictripdata.csv")
+trp_oct_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202210-divvy-tripdata/202210-divvy-tripdata_raw.csv")
+trp_nov_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202211-divvy-tripdata/202211-divvy-tripdata.csv")
+trp_dec_22 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202212-divvy-tripdata/202212-divvy-tripdata.csv")
+trp_jan_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202301-divvy-tripdata/202301-divvy-tripdata.csv")
+trp_feb_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202302-divvy-tripdata/202302-divvy-tripdata.csv")
+trp_mar_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202303-divvy-tripdata/202303-divvy-tripdata.csv")
+trp_apr_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202304-divvy-tripdata/202304-divvy-tripdata.csv")
+trp_may_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202305-divvy-tripdata/202305-divvy-tripdata.csv")
+trp_jun_23 = pd.read_csv("F:/Data_Sci/Cap_Stone_Project/Cyclist_trip_data/202306-divvy-tripdata/202306-divvy-tripdata.csv")
+
+```
+
+As structure of `.csv`'s is same across the all the files lets combine all the `.csv` files into a single data frame which contains data of all 12 months.
+
+-   **Combining all the monthly data to one previous year data(`df_1year`).**
+
+```{python}
+df_1year_raw = pd.concat([trp_jul_22, trp_aug_22, trp_sep_22, trp_oct_22, trp_nov_22, 
+                      trp_dec_22, trp_jan_23, trp_feb_23, trp_mar_23, 
+                      trp_apr_23, trp_may_23, trp_jun_23], ignore_index=True)
+
+df_1year_raw.info()
+```
+
+-   `df_1year` data frame contains data from the month of July-2022 to June-2023.
+
+## Cleaning the Data
+
+-   Checking and counting "NA" in each column of the data frame. Data is much better without "NA" as they can cause problems while aggregating data and calculating averages and sums. We can use `map` function to perform a function to all of the columns.
+
+```{python checking na}
+df_1year = df_1year_raw.copy()
+
+df_1year.isna().sum()
+```
+
+-   As NA's are not present in the times columns i.e, `started_at` and `ended_at` we don't need to worry ourselves about `NA` during aggregation and manipulation of data but it is a good practice to do so.
+
+-   Finding the length or duration of the rides by making a new column `ride_length` in minutes and making sure that the `ride_length` is not negative by using `if_else` function. Eliminating stations where station names and longitude and latitude co-ordinates are not present.
+
+```{python finding ride length}
+
+# Converting 'started_at' and 'ended_at' to datetime format
+df_1year = df_1year.astype({'started_at': 'datetime64[ns]', 'ended_at': 'datetime64[ns]'})
+
+# Calculating ride length in minutes
+df_1year['ride_length'] = (df_1year['ended_at'] - df_1year['started_at']).dt.total_seconds() / 60
+
+# Replacing negative ride lengths with NaN
+df_1year['ride_length'] = df_1year['ride_length'].apply(lambda x:0 if x < 0 else x)
+
+# Dropping rows with NaN values in 'ride_length', 'start_station_name',
+#  'end_station_name', 'start_lat', 'start_lng', 'end_lat', 'end_lng'
+
+df_1year = ( df_1year[
+                    (df_1year['ride_length'] > 0) & 
+                    (df_1year['start_station_name'].notna()) & 
+                    (df_1year['end_station_name'].notna()) & 
+                    (df_1year['start_lat'].notna()) & 
+                    (df_1year['start_lng'].notna()) & 
+                    (df_1year['end_lat'].notna()) & 
+                    (df_1year['end_lng'].notna())
+                    ].sort_values('ride_length', ascending=False)
+                    )
+
+df_1year.info()
+
+```
+
+## Analysis of Data
+
+#### Aggregating data by Rider type and Bike type.
+
+-   Aggregating data to see **"Average minutes per ride"** grouped by "bike type" and "rider type" after removing rides less than 2 minutes (As rides less than 2 minutes tend to have the same start and stop stations).
+
+```{python avg_min_per_ride}
+#| label: tbl-avg_ride_legnth
+#| tbl-cap: Average minutes per ride
+
+df_1year_agg = (df_1year[df_1year['ride_length'] >= 2]
+                     .groupby(['rideable_type', 'member_casual'])
+                     .agg(avg_ride_length=('ride_length', 'mean'),
+                          total_rides=('ride_length', 'count'),
+                          max_ride_length=('ride_length', 'max'))
+                     .round(2)
+                     .sort_values(by='avg_ride_length', ascending=False)
+                     .reset_index()
+                     )
+
+df_1year_agg
+
+```
+
+We can clearly notice in @tbl-avg_ride_legnth that **member** riders have more number of rides with both **classic and electric bikes** while the average ride length is higher with **casual** riders.
+
+-   Calculating and visualizing **Average ride length** by "Rider type".
+
+```{python Plot-Average ride length}
+#| label: fig-avg_ride_length
+#| fig-cap: Average Ride Length by Rider type and Member type
+
+avg_ride_by_rideable_type = (
+    df_1year.rename(columns={'rideable_type': 'Bike Type', 'member_casual': 'Rider Type'})
+    .groupby(['Bike Type', 'Rider Type'])
+    .agg(
+        avg_ride_by_rideable_type=('ride_length', 'mean'),
+        total_rides=('ride_length', 'count')
+    )
+    .reset_index()
+)
+
+sns.set(rc={'figure.figsize':(10, 6)})
+sns.barplot(data=avg_ride_by_rideable_type,
+            x='Rider Type', y='avg_ride_by_rideable_type', hue='Bike Type')
+plt.title('Average Ride Length by Rider Type and Bike Type')
+plt.xlabel('Rider Type')
+plt.ylabel('Average Ride Length (minutes)')
+plt.legend(title='Bike Type')
+plt.xticks(rotation=45)
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.show()
+
+
+```
+
+The above @fig-avg_ride_length clearly shows that members average ride lengths between bike types doesn't differ much for **member** riders but differs with **casual** riders upto **8 minutes**.
+
+::: callout-warning
+## Note
+
+Further down in the analysis "docked_bike" type is dropped as no proper documentation is available in the course.
+:::
+
+### Analysing data by Time of the year and Ride Length
+
+#### Ride Patterns Across the Weeks and Months of the Year
+
+-   Calculating and visualizing ride patterns in a week for number of rides.
+
+```{python plot-ride_patterns_week}
+#| label: fig-ride_patterns_week
+#| fig-cap: Ride Patterns Across the Weeks of the Year
+
+# Define the order for rideable_type
+rideable_order = ["classic_bike", "electric_bike", "docked_bike"]
+
+# Filter out 'docked_bike'
+df_1year_filtered = df_1year[df_1year['rideable_type'] != 'docked_bike'].copy()
+
+# Extracting month and weekday names 
+
+df_1year_filtered['month'] = df_1year_filtered['started_at'].dt.month_name()
+df_1year_filtered['weekday'] = df_1year_filtered['started_at'].dt.day_name()
+
+# Set categorical order for rideable_type, member_casual, and month
+
+df_1year_filtered['rideable_type'] = pd.Categorical(df_1year_filtered['rideable_type'], categories=rideable_order, ordered=True)
+
+# Set categorical order for member_casual to control legend order
+member_order = ['member', 'casual']
+df_1year_filtered['member_casual'] = pd.Categorical(df_1year_filtered['member_casual'], categories=member_order, ordered=True)
+
+month_order = ['July', 'August', 'September', 'October', 'November', 'December',
+             'January', 'February', 'March', 'April', 'May', 'June']
+
+weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+df_1year_filtered['month'] = pd.Categorical(df_1year_filtered['month'], categories=month_order, ordered=True)
+df_1year_filtered['weekday'] = pd.Categorical(df_1year_filtered['weekday'], categories=weekday_order, ordered=True)
+
+# Plot 
+g = sns.catplot(
+    data = df_1year_filtered,
+    x = 'weekday',
+    kind= 'count',
+    hue = 'member_casual',
+    col= 'month',
+    col_wrap= 4,
+    height= 4,
+    aspect= 1.5,
+    palette= 'Set2',
+    dodge = True
+)
+
+g.set_axis_labels("Weekday", "Number of Rides")
+g.set_titles(col_template="{col_name}")
+g.fig.suptitle(
+    "Ride Patterns on Weekdays of each Month \n From July-2022 to June-2023", fontsize=18
+)
+g.add_legend(title="Rider Type")
+plt.tight_layout()
+plt.show()
+
+```
+
+The above @fig-ride_patterns_week clearly shows how the number of rides change due to seasons. In winters the number of rides decrease very drastically may be because of temperature and snow. In Summers the number of rides are at its peak.
+
+The number of rides driven by **member** riders increases through the week especially in working week days but for casual riders the rides increase in the weekends. The @fig-ride_patterns_week shows number of rides on Saturdays and Sundays by casual members overtake membership riders in the months of July and August.
+
+Aggregating data for the visualization.
+
+```{python aggregation for temporal patterns}
+#| warning: false
+#| message: false
+
+df_1year['month'] = df_1year['started_at'].dt.month_name()
+df_1year['weekday'] = df_1year['started_at'].dt.day_name()
+
+# Set categorical order for month
+month_order = ['July', 'August', 'September', 'October', 'November', 'December',
+             'January', 'February', 'March', 'April', 'May', 'June']
+df_1year['month'] = pd.Categorical(df_1year['month'], categories=month_order, ordered=True)
+
+# Set categorical order for weekday
+weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+df_1year['weekday'] = pd.Categorical(df_1year['weekday'], categories=weekday_order, ordered=True)
+
+
+rides_on_days = df_1year.groupby(['month', 'weekday', 'member_casual']).agg(
+    avg_ride_length=('ride_length', 'mean'),
+    total_ride_length=('ride_length', 'sum'),
+    total_rides=('ride_length', 'count')
+).reset_index().sort_values(by=['month', 'weekday', 'member_casual']).round(2)
+
+rides_on_days.head(5)
+
+```
+
+```{python avg_ride_length_plot}
+#| label: fig-avg_ride_length_weekday
+#| fig-cap: Average Ride Length by Weekday and Rider Type
+
+sns.barplot(data=rides_on_days, x='weekday', y='avg_ride_length', hue='member_casual', 
+            palette='Set1', errorbar=None, estimator=np.mean)
+plt.title('Average Ride Length by Weekday and Rider Type')
+plt.xlabel('Weekday')
+plt.ylabel('Average Ride Length (minutes)')
+plt.legend(title='Rider Type')
+plt.xticks(rotation=45)
+plt.show()
+
+```
+
+The above @fig-avg_ride_length_weekday shows that the average ride length is higher for **casual** riders than **member** riders on all the days of the week. The average ride length is highest on **Saturdays** and **Sundays** for both the rider types.
+
+```{python avg_ride_length_plot_month}
+#| label: fig-avg_ride_length_month
+#| fig-cap: Average Ride Length by Month and Rider Type
+
+sns.barplot(data=rides_on_days, x='month', y='avg_ride_length', hue='member_casual', 
+            palette='Set1', errorbar=None)
+plt.title('Average Ride Length by Month and Rider Type')
+plt.xlabel('Month')
+plt.ylabel('Average Ride Length (minutes)')
+plt.legend(title='Rider Type')
+plt.xticks(rotation=45)
+plt.show()
+
+```
+
+The above @fig-avg_ride_length_month shows that the average ride length is higher for **casual** riders than **member** riders in all the months of the year. The average ride length is highest in the month of **August** for both the rider types.
+
+```{python avg_num_rides_plot}
+#| label: fig-avg_num_rides_weekday
+#| fig-cap: Number of Rides by Weekday and Rider Type
+
+sns.lineplot(data=rides_on_days, x='weekday', y='total_rides', hue='member_casual', 
+            palette='Set1', errorbar=None)
+plt.title('Number of Rides by Weekday and Rider Type')
+plt.xlabel('Weekday')
+plt.ylabel('Number of Rides')
+plt.legend(title='Rider Type')
+plt.show()
+
+
+```
+
+The above @fig-avg_num_rides_weekday shows that the number of rides is higher for **member** riders than **casual** riders on all the days of the week. The number of rides is meet on **Saturdays** for both the rider types.
+
+```{python avg_num_rides_plot_month}
+#| label: fig-avg_num_rides_month
+#| fig-cap: Number of Rides by Month and Rider Type
+
+sns.lineplot(data=rides_on_days, x='month', y='total_rides', hue='member_casual', 
+            palette='Set1', errorbar=None)
+plt.title('Number of Rides by Month and Rider Type')
+plt.xlabel('Month')
+plt.ylabel('Number of Rides')
+plt.legend(title='Rider Type')
+plt.show()
+
+```
+
+The above @fig-avg_num_rides_month shows that the number of rides is higher for **member** riders than **casual** riders in all the months of the year. The number of rides is highest in the month of **August** for both the rider types.
+
+#### Ride Patterns Across the Hours of the Day
+
+-   Calculating and visualizing ride patterns in a day for number of rides.
+
+```{python plot-ride_patterns_day}
+#| label: fig-ride_patterns_day
+#| fig-cap: Ride Patterns Across the Hours of the Day
+#| warning: false
+#| message: false
+
+# Extracting hour from started_at
+df_1year['hour'] = df_1year['started_at'].dt.hour.astype(str).str.zfill(2)  # Format hour as two digits
+
+# Set categorical order for hour
+hour_order = [f"{hour:02d}" for hour in range(24)]
+
+df_1year['hour'] = pd.Categorical(df_1year['hour'], categories=hour_order, ordered=True)
+
+rides_by_hour = df_1year.groupby(['hour', 'member_casual']).agg(total_rides=('ride_length', 'count')).reset_index()
+
+sns.barplot(data=rides_by_hour, x='hour', y='total_rides', hue='member_casual', 
+            palette='Set1', errorbar=None)
+plt.title('Ride Patterns Across the Hours of the Day')
+plt.xlabel('Hour of the Day')
+plt.ylabel('Number of Rides')
+plt.legend(title='Rider Type')
+plt.show()
+
+```
+
+The above @fig-ride_patterns_day shows that the number of rides is higher for **member** riders than **casual** riders in the morning hours and evening hours. The number of rides is highest in the evening hours for both the rider types.
+
+## Conclusion
+
+The analysis of the cyclist trip data reveals several key insights:
+
+### Rider Patterns
+
+-   **Member riders** tend to use bikes more frequently than **casual riders**, especially during weekdays.
+-   **Casual riders** show a preference for weekends, with a significant increase in rides during Saturdays and Sundays.
+
+### Ride Length
+
+-   The average ride length is generally longer for **casual riders** compared to **member riders**.
+-   The longest average ride lengths occur on weekends, particularly for **casual riders**.
+
+### Seasonal Trends
+
+-   The number of rides fluctuates significantly throughout the year, with peaks in summer months (July and August) and a noticeable drop in winter months (January and February).
+-   The analysis indicates that weather and seasonal changes have a substantial impact on cycling patterns.
+-   The data suggests that **member riders** maintain a more consistent usage pattern throughout the year compared to **casual riders**.
+
+### Temporal Patterns
+
+-   Ride patterns vary by time of day, with peak usage in the morning and evening hours.
+-   The analysis highlights the importance of understanding temporal patterns to optimize bike availability and station placements.
+
+## Recommendations
+
+-   **Infrastructure Improvements**: Consider adding more bike stations in areas with high casual rider activity, especially during weekends.
+-   **Promotional Campaigns**: Encourage casual riders to become members by offering incentives, such as discounts or free trials, to increase overall ridership.
+-   **Seasonal Promotions**: Implement seasonal promotions to boost ridership during colder months, potentially by offering discounts or special events to attract casual riders.
+-   **Data-Driven Decisions**: Continue to analyze ride patterns regularly to adapt to changing user behaviors and preferences, ensuring that the bike-sharing system remains efficient and user-friendly.

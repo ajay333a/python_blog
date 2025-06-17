@@ -1,0 +1,34 @@
+---
+title: "Ajay Shankar A"
+image: profile_image_Ajay.jpg
+about:
+  template: solana
+  links:
+    - icon: twitter
+      text: Twitter
+      href: https://twitter.com/ajay333a
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/ajay-shankar-a-4b0b121a1/
+    - icon: github
+      text: Github
+      href: https://github.com/ajay333a
+---
+
+This is a blog for projects completed successfully by me with **Python** programming language. This blog will include projects from basic "Exploratory Data Analysis(EDA)" to complex "Machine Learning(ML)" projects.
+
+## EDUCATION
+
+-   **University of Agricultural Sciences, Dharwad** \| Dharwad, Karnataka \| Masters in Forest Biology and Tree Improvement \| Sept 2019 - Nov 2022
+
+-   **College of Forestry, Sirsi** \| Uttara Kannada, Karnataka \| B.Sc in Forestry \| Aug 2015 - April 2019
+
+## Experience
+
+-   **Technical Assistant** \| Social Forest Department, Siruguppa \| Dec 2022 - Present
+-   **Research Associate** \| EMPRI \| May 2022 - Aug 2022
+
+## Citations(Projects)
+
+-   [**Availability of Wood for Handicrafts in Karnataka** - Strengthening livelihoods and job creation](https://empri.karnataka.gov.in/uploads/media_to_upload1679382736.pdf).
+-   [**An Assessment of Wood Availability in Karnataka**](https://empri.karnataka.gov.in/uploads/media_to_upload1677828822.pdf)

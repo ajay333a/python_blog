@@ -1,0 +1,21 @@
+---
+title: "Projects with Python"
+listing:
+  contents: posts
+  sort: "date desc"
+  type: default
+  categories: numbered
+  sort-ui: false
+  filter-ui: false
+format: html  
+page-layout: article
+title-block-banner: true
+---
+
+This is a blog for projects completed successfully by me with **Python** programming language. This blog will include projects from basic "Exploratory Data Analysis(EDA)" to complex "Machine Learning(ML)" projects.
+
+<div>
+
+To find all the other projects using other tools visit my [Data Science Portfolio Website](https://ajay333a.quarto.pub/ajay-shankar-a/)
+
+</div>

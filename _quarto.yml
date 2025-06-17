@@ -1,0 +1,28 @@
+project:
+  type: website
+
+website:
+  title: "Python Data Science Blog"
+  description: "A blog for Data Sciecne projects"
+  navbar:
+    background: primary
+    right:
+      - text: "Home"
+        file: index.qmd
+      - about.qmd
+      - icon: github
+        href: https://github.com/ajay333a
+      - icon: linkedin
+        href: https://www.linkedin.com/in/ajay-shankar-a-4b0b121a1/
+      - icon: twitter
+        href: https://twitter.com/ajay333a
+format:
+  html:
+    theme: darkly
+    css: styles.css
+toc: true
+toc-depth: 3
+number-sections: TRUE
+number-depth: 3
+
+editor: visual
