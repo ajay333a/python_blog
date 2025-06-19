@@ -14,5 +14,9 @@
   "posts/cyclist_trip_analysis/cyc_trip_analysis.qmd": {
     "cyc_trip_analysis.html": "2744e2ea",
     "cyc_trip_analysis.docx": "34dd072a"
+  },
+  "posts/laptop_price_prediction/laptop_price_prediction.qmd": {
+    "laptop_price_prediction.html": "3354423b",
+    "laptop_price_prediction.docx": "8a6dd6a1"
   }
 }

@@ -36,3 +36,5 @@ Thumbs.db
 
 # Node modules (if using JS tools)
 node_modules/
+
+/.quarto/
