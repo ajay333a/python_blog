@@ -1,0 +1,810 @@
+---
+title: "Laptop Price Prediction"
+author: "Ajay Shankar A"
+date: "2025-06-18"
+format: 
+  html:
+    page-layout: full
+  docx: default
+categories: [Code, EDA, ML, 'Random Forest']
+---
+
+# Laptop Price Prediction
+
+This project aims to predict laptop prices based on various features such as specifications, brand, and market.
+
+## Data Description
+
+The model is trained on the **"Laptop Price Prediction Dataset"** from Kaggle, which contains comprehensive laptop specifications and prices from various manufacturers.
+
+**Kaggle Dataset Link**: [Laptop Price Prediction Dataset](https://www.kaggle.com/datasets/arnabchaki/laptop-price-prediction)
+
+## Loading Libraries and Dataset
+
+### Importing Libraries
+
+Pandas, NumPy, Matplotlib, and Seaborn are used for data manipulation, numerical operations, and visualization.
+
+```{python importing libraries}
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+```
+
+Importing dataset
+
+```{python loading data}
+
+df = pd.read_csv("F:/Odin_school/Capstone_projects/ml_capstone/laptop.csv")
+
+df.head()
+
+```
+
+## Data Cleansing
+
+### Checking for Missing Values
+
+```{python checking missing values}
+df.isnull().sum()
+```
+
+All columns except `Unnamed: 0.1` has missing values, which might mean that first column may just be an index column. Let's drop it and check `Unnamed: 0` column.
+
+```{python dropping columns}
+df = df.drop(['Unnamed: 0.1'], axis=1)
+
+df.isnull().sum()
+```
+
+`Null` values are still present lets drop the rows with `Null` values.
+
+```{python dropping null values}
+
+df = df.dropna()
+df.info()
+
+```
+
+There are `1273` non-null entries in the dataset now, which means we have successfully removed rows with missing values. Let's check if `Unnamed: 0` column is just an index column or not.
+
+```{python checking index column}
+
+df['Unnamed: 0'].nunique()
+
+```
+
+It seems that `Unnamed: 0` column is just an index column, let's drop it as well.
+
+```{python dropping index column}
+df = df.drop(['Unnamed: 0'], axis=1)
+df.info()
+```
+
+Now we have `1273` non-null entries in the dataset and no missing values. Let's check for duplicates in the data.
+
+```{python duplicates}
+
+print(df.duplicated().sum())
+
+df[df.duplicated()].sort_values(by='Company', ascending=True).head(3)
+
+```
+
+There are 29 duplicate records in the dataset, let's drop them.
+
+```{python dropping_duplicates}
+
+df = df.drop_duplicates()
+
+df.info()
+
+```
+
+Now we have `1244` non-null entries in the dataset and no missing values or duplicates.
+
+There are 11 columns in the dataset, among which `Price` is the only column with `folat64` data type rest are `object` data type.
+
+## Exploratory Data Analysis
+
+Let's start with the basic statistics of the dataset.
+
+```{python basic_statistics}
+
+df.describe(include='all')
+
+```
+
+The dataset contains 11 columns with the following features: - **Company**: The brand of the laptop with 19 brands. - **TypeName**: The type of laptop, such as Ultrabook, Gaming, etc. - **Inches**: The size of the laptop screen in inches. - **ScreenResolution**: The resolution of the laptop screen. - **Cpu**: The type of CPU used in the laptop. - **Ram**: The amount of RAM in GB. - **Memory**: The type and size of storage memory (HDD/SSD). - **Gpu**: The type of GPU used in the laptop. - **OpSys**: The operating system installed on the laptop. - **Weight**: The weight of the laptop in kg. - **Price**: The price of the laptop in INR(Indian Rupees).
+
+### Feature Extraction
+
+Let's extract some features from the existing columns to make the dataset more informative.
+
+First lets convert all the column names to lower case for consistency.
+
+```{python colum_names to lower}
+
+df.columns = df.columns.str.lower()
+
+print(df.columns)
+
+```
+
+Let's check for the unique values in columns.
+
+```{python unique values}
+
+print(df.company.unique())
+print(df.typename.unique())
+print(df.ram.unique())
+print(df.opsys.unique())
+
+```
+
+```{python}
+
+print(df.cpu[1])
+print(df.screenresolution[6])
+print(df.gpu[88])
+
+```
+
+we can seperate values in columns to form new parameters i.e, - `screenresolution` can give us `display_type`, `resolution` & `touchscreen` - `cpu` can be seperated to form `cpu` and `clockspeed` - `memory` can be seperated to form `memory` and `memory_type` - `gpu` can be seperated to get `gpu_company`
+
+#### `CPU` features
+
+```{python seperating cpu features}
+# cpu brand name
+df['cpu_brand'] = df.cpu.str.split().str[0]
+
+# cpu name
+df['cpu_name'] = df.cpu.str.replace(r'\d+(?:\.\d+)?GHz', '', regex=True,).str.strip()
+# removing brand name
+df['cpu_name'] = df.cpu_name.str.replace(r'^\w+', '', regex=True).str.strip()
+
+# cpu clock speed
+df['cpu_ghz'] = df.cpu.str.extract(r'(\d+(?:\.\d+)?)GHz').astype('float64')
+
+df[['cpu_brand', 'cpu_name', 'cpu_ghz']]
+
+```
+
+Now, we have 3 columns act as seperate features for the price prediction.
+
+#### `Screen Resolution` Features
+
+-   `screenresolution` has many features ie., screen type, screen height, width, touch screen etc. Let's extract all of them
+
+```{python screen_resolution_features}
+
+# display resolution
+df['resolution'] = df['screenresolution'].str.extract(r'(\d+x\d+)')
+
+# touch screen or not
+df['touchscreen'] = df['screenresolution'].apply(lambda x: 1 if 'Touchscreen' in x else 0)
+
+# Display type
+df['display_type'] = df['screenresolution'].str.replace(r'\d+x\d+', "", regex = True).str.strip()
+
+df['display_type'] = df['display_type'].str.replace(r'(Full HD|Quad HD|4K Ultra HD|/|\+|Touchscreen)', '', regex = True).str.replace('/', '', regex = True).str.strip()
+
+df[['resolution', 'touchscreen', 'display_type']]
+
+```
+
+Now, we have another 3 columns to act as 3 seperate features.
+
+```{python total touch_screens}
+df.touchscreen.sum()
+```
+
+#### `GPU` Features
+
+Let's extarct `gpu_brand` and `gpu_name` from the column `gpu`
+
+```{python gpu_features}
+
+# gpu brand
+df['gpu_brand'] = df['gpu'].str.extract(r'^(\w+)')
+
+# gpu name
+df['gpu_name'] = df['gpu'].str.replace(r'^(\w+)', '', regex = True).str.strip()
+
+df[['gpu_brand', 'gpu_name']]
+
+
+```
+
+#### `Memory Features` Features
+
+Most of the laptops have two drives which need to be seperated and type of memory is also in the memory so we need to seperate them both after seperating the drives.
+
+-   First replace the `TB` with `GB`(1TB \~ 1000GB)
+-   `+` seperates two drives, `str.split()` function can be used to list the two memory drives and then they are slotted into seperate columns.
+
+```{python replace TB with GB}
+
+df.memory = df.memory.str.replace(r'1.0TB|1TB', "1000GB", regex = True)
+df.memory = df.memory.str.replace(r'2.0TB|2TB', "2000GB", regex = True)
+
+df.memory.unique()
+
+```
+
+```{python slot seperation}
+
+df['memory_list'] = df.memory.str.split('+')
+
+df['memory_1'] = df['memory_list'].str[0]
+df['memory_2'] = df['memory_list'].str[1]
+
+df[['memory_1', 'memory_2']]
+
+```
+
+Let's seperate `df['memory_1']` into 2 seperate columns for `memory_capacity` and `memory_type`
+
+```{python memory_1 seperation}
+
+df['memory_capacity_1'] = df['memory_1'].str.extract(r'(\d+)').astype('float64')
+df['memory_type_1'] = df['memory_1'].str.replace(r'(\d+[A-Z]{2})', '', regex = True).str.strip()
+
+df[['memory_capacity_1', 'memory_type_1']]
+
+```
+
+Let's repeat this for `memory_2` also
+
+```{python memory_2 seperation}
+
+df['memory_capacity_2'] = df['memory_2'].str.extract(r'(\d+)').astype('float64')
+df['memory_type_2'] = df['memory_2'].str.replace(r'(\d+[A-Z]{2})', '', regex = True).str.strip()
+
+df[['memory_capacity_2', 'memory_type_2']].dropna()
+
+```
+
+#### Other Features
+
+Let's convert all the columns that can be numeric into numeric or float i.e, `ram`, `inches`, `weight`
+
+```{python str_to_num}
+
+df['ram_gb'] = df['ram'].str.replace('GB', '').astype('int')
+
+df['inches_size'] = pd.to_numeric(df['inches'], errors= 'coerce')
+
+df['weight_kg'] = df['weight'].replace('?', np.nan).str.replace('kg', '').astype('float64')
+
+df[['ram_gb', 'inches_size', 'weight_kg']]
+
+```
+
+Let's look at data once more
+
+```{python data info}
+
+df.info()
+
+```
+
+`11` columns just were made into 29 columns among which repeated columns are not necessary to build a model so let's remove them.
+
+```{python removing_obselete_columns}
+
+df_clean = df.drop(columns = ['ram','screenresolution', 'cpu', 'memory', 'memory_list',
+                              'memory_1', 'memory_2' ,'gpu', 'weight', 'inches'])
+
+print(df_clean.info())
+df_clean.head(5)
+
+```
+
+Now that dataset is clean let's go for EDA.
+
+### Data Visualisation
+
+As we have 8 numeric columns, let's start with correlation plot.
+
+```{python correlation plot}
+
+sns.heatmap(df_clean.select_dtypes(include = ['int64', 'float64']).corr(),
+                                   annot = True, cmap = 'coolwarm')
+plt.show()
+
+```
+
+We can see that `price` has a strong positive correlation with `ram_gb` and `cpu_ghz`.
+
+Let's check the distribution of `price` column.
+
+```{python price distribution}
+
+sns.histplot(df_clean['price'], bins = 20, kde = True)
+plt.show()
+
+```
+
+The plot is right skewed, we can `log` transform the `price` column to make it more normal.
+
+```{python log transform}
+
+df_clean['price_log'] = np.log1p(df_clean['price'])
+
+sns.histplot(df_clean['price_log'], bins = 50, kde = True)
+plt.show()
+
+```
+
+`price_log` is more normally distributed, let's check the correlation of `price_log` with other columns.
+
+```{python correlation of price_log with other columns}
+
+sns.heatmap(df_clean.drop(columns = ['price']).select_dtypes(include = ['int64', 'float64']).corr(),
+                                    annot = True, cmap = 'coolwarm')
+plt.show()
+
+```
+
+We can see that `price_log` has a strong positive correlation with `ram_gb` and `cpu_ghz`.
+
+Let's plot `price_log` in a boxplot to get the outliers.
+
+```{python boxplot of price_log}
+
+ax = sns.boxplot(x='price_log', data=df_clean)
+max = df_clean['price_log'].max()
+plt.text(max, 0, f'{max:.2f}', ha='center', va='bottom', color='red')
+plt.xlabel('Price_log')
+plt.title('Boxplot of Price_log')
+plt.show()
+
+```
+
+There is only one outlier in the data, let's remove it.
+
+```{python removing outliers}
+
+df_clean = df_clean[df_clean['price_log'] < 12.6]
+
+df_clean['price_log'].max()
+```
+
+Now we have removed the outliers from `price_log` column. Let's look at `object` columns starting with companies.
+
+```{python company_counts}
+
+sns.barplot(x = df_clean.company.value_counts().index,
+            y = df_clean.company.value_counts().values)
+plt.xlabel('Company')
+plt.ylabel('Count')
+plt.title('Company Counts')
+plt.xticks(rotation = 90)
+plt.show()
+
+
+```
+
+**Lenovo**, **Dell**, **HP** are the top 3 companies in the dataset.
+
+```{python companies}
+
+company_counts = df_clean.company.value_counts()
+
+print((company_counts[:3].sum()/len(df_clean)).round(3))
+
+```
+
+**66.2%** of the laptops are from **Lenovo**, **Dell**, **HP**.
+
+Let's look at `cpu` and it's features.
+
+```{python cpu_features}
+
+print(df_clean.cpu_brand.nunique())
+print(df_clean.cpu_ghz.nunique())
+print(df_clean.cpu_name.nunique())
+
+```
+
+There are 3 unique values in `cpu_brand`, 25 unique values in `cpu_ghz`, 93 unique values in `cpu_name`.
+
+```{python cpu_brand_counts}
+
+cpu_brand_counts = df_clean.cpu_brand.value_counts()
+cpu_ghz_counts = df_clean.cpu_ghz.value_counts().sort_values(ascending = False)
+cpu_name_counts = df_clean.cpu_name.value_counts()
+
+print(cpu_brand_counts)
+print(cpu_ghz_counts.head(5))
+
+
+```
+
+Most of the laptops have `Intel` CPU, `2.4GHz` is the most common CPU clock speed, `Intel Core i5` is the most common CPU name.
+
+`Samsung` has only one laptop in the dataset, which is not ideal for building a model, let's remove it.
+
+```{python removing samsung}
+
+df_clean = df_clean[df_clean.cpu_brand != 'Samsung']
+
+df_clean.cpu_brand.unique()
+```
+
+Let's plot `cpu_ghz` to know the distribution of CPU clock speed.
+
+```{python cpu_ghz_distribution}
+
+sns.barplot(x=cpu_ghz_counts.index.astype(str),
+            y=cpu_ghz_counts.values)
+plt.xlabel('CPU GHz')
+plt.ylabel('Count')
+plt.title('CPU GHz Distribution')
+plt.xticks(rotation=90)
+plt.show()
+
+```
+
+`2.5GHz` is the most common CPU clock speed, followed by `2.8GHz` and `2.7GHz`.
+
+```{python screen_size}
+
+sns.barplot(x=df_clean.inches_size.value_counts().index.astype(str),
+            y=df_clean.inches_size.value_counts().values)
+plt.xlabel('Screen Size')
+plt.ylabel('Count')
+plt.xticks(rotation=90)
+plt.title('Laptops with screen sizes')
+plt.show()
+
+```
+
+`15.6` is the most common screen size, followed by `14.0` and `17.3` inches.
+
+```{python screen_size_prop}
+
+screen_size_counts = df_clean.inches_size.value_counts().sort_values(ascending = False)
+
+print(screen_size_counts.head(6).sum()/screen_size_counts.sum())
+
+
+```
+
+Only 4 sizes make up `96.21%` of the laptops in the dataset, which means we can drop the other sizes.
+
+```{python dropping other screen sizes}
+
+df_clean = df_clean[df_clean.inches_size.isin([13.3, 14.0, 15.6, 17.3, 11.6, 12.5])]
+
+df_clean.inches_size.unique()
+
+```
+
+Let's look at correlation once again.
+
+```{python correlation plot}
+
+sns.heatmap(df_clean.select_dtypes(include = ['int64', 'float64']).corr(),
+            annot = True, cmap = 'coolwarm')
+plt.show()
+
+```
+
+## Model Building
+
+We have gone through different parameters of the data now it's time to put that to building a model.
+
+I am going to build 2 models 1. Random Forest Regressor 2. Linear Regression Model
+
+and compare them to find the best model.
+
+### Importing Libraries
+
+Importing libraries for model building and evaluation with `sklearn`.
+
+```{python importing libraries}
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+```
+
+### Data Preparation
+
+`RandomForestRegressor` can deal with Null values, so we don't need to handle them for this model, but we need to handle them for `LinearRegression` model.
+
+Let's create a copy of the dataset and drop the `price` column.
+
+Then we need to label encode the `cpu_ghz`, `inches_size`, `ram_gb`, `memory_capacity_1`, `memory_capacity_2`, `resolution` columns as they are ordinal data.
+
+```{python label encoding}
+
+df_model = df_clean.copy().drop(columns=['price'])
+
+ordinal_cols = ['cpu_ghz', 'inches_size', 'ram_gb', 'memory_capacity_1', 'memory_capacity_2', 'resolution', 'weight_kg']
+
+for col in ordinal_cols:
+    le = LabelEncoder()
+    df_model[col] = le.fit_transform(df_model[col])
+
+df_model.head()
+
+```
+
+We need to one hot encode the `cpu_brand`, `gpu_brand`, `company`, `display_type`, `touchscreen`, `cpu_name`, `gpu_name` columns as they are categorical data.
+
+```{python one hot encoding}
+
+nominal_cols = ['cpu_brand', 'gpu_brand', 'company', 'display_type', 'touchscreen', 'cpu_name', 'gpu_name', 'typename', 'opsys', 'memory_type_1', 'memory_type_2']
+
+df_model = pd.get_dummies(df_model, columns=nominal_cols, drop_first=False)
+
+print(df_model.shape)
+df_model.head()
+```
+
+### Random Forest Regressor
+
+#### Data Preparation
+
+Let's split the data into training and testing sets.
+
+```{python data preparation}
+
+x = df_model.drop(columns = ['price_log'])
+y = df_model['price_log']
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42)
+
+```
+
+#### Model Training & Evaluation
+
+Training the model with `RandomForestRegressor` and evaluating it with `mean_squared_error` and `r2_score`.
+
+```{python model training}
+#
+
+rf_model = RandomForestRegressor(n_estimators= 100, max_depth = 200, max_features = 20)
+rf_model.fit(x_train, y_train)
+
+```
+
+```{python model evaluation}
+
+y_pred = rf_model.predict(x_test)
+
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f'Mean Squared Error: {mse:.2f}')
+print(f'R2 Score: {r2:.2f}')
+
+```
+
+The `R2 Score` is `0.88`, which is good and `Mean Squared Error` is `0.04` which is also good for this model.
+
+Let's plot the predicted vs actual values.
+
+```{python predicted vs actual}
+
+sns.scatterplot(x=y_test, y=y_pred)
+plt.xlabel('Actual Price (log)')
+plt.ylabel('Predicted Price (log)')
+plt.title('Predicted vs Actual Price (log)')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], color='red', linestyle='--')
+plt.show()
+
+```
+
+### Linear Regression Model
+
+#### Data Preparation
+
+```{python data preparation}
+
+df_lr = df_clean.copy().drop(columns=['price'])
+
+df_lr.info()
+
+```
+
+We nedd to deal with the missing values in the dataset for `LinearRegression` model.
+
+```{python handling missing values}
+
+df_lr.isnull().sum()
+
+```
+
+There are 1 missing values in `weight_kg` column and 1 missing value in `memory_capacity_1`, let's fill it with the median and mean of the columns.
+
+```{python filling missing values}
+
+df_lr['weight_kg'] = df_lr['weight_kg'].fillna(df_lr['weight_kg'].median())
+df_lr['memory_capacity_1'] = df_lr['memory_capacity_1'].fillna(df_lr['memory_capacity_1'].mean())
+
+```
+
+`memory_capacity_2` and `memory_type_2` are lots of missing values, let's fill them with `0`s respectively.
+
+```{python filling missing values}
+
+df_lr['memory_capacity_2'] = df_lr['memory_capacity_2'].fillna(0)
+df_lr['memory_type_2'] = df_lr['memory_type_2'].fillna('None')
+df_lr['memory_type_1'] = df_lr['memory_type_1'].replace({0: 'None', np.nan: 'None'})
+```
+
+Now we have filled the missing values in the dataset for `LinearRegression` model. Let's encode the data for `LinearRegression` model.
+
+```{python encoding data}
+
+ordinal_cols = ['cpu_ghz', 'inches_size', 'ram_gb', 'memory_capacity_1', 'memory_capacity_2', 'resolution', 'weight_kg']
+
+for col in ordinal_cols:
+    le = LabelEncoder()
+    df_lr[col] = le.fit_transform(df_lr[col])
+
+df_lr.head(3)
+
+```
+
+We need to encode nominal data for `LinearRegression` model.
+
+```{python encoding nominal data}
+
+nominal_cols = ['cpu_brand', 'gpu_brand', 'company', 'display_type', 'touchscreen', 'cpu_name', 'gpu_name', 'typename', 'opsys', 'memory_type_1', 'memory_type_2']
+
+df_lr = pd.get_dummies(df_lr, columns=nominal_cols, drop_first=False)
+
+df_lr.head(3)
+
+```
+
+Let's split the data into training and testing sets.
+
+```{python data preparation}
+
+x = df_lr.drop(columns = ['price_log'])
+y = df_lr['price_log']
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42)
+
+```
+
+#### Model Training & Evaluation
+
+Training the model with `LinearRegression` and evaluating it with `mean_squared_error` and `r2_score`.
+
+```{python model training}
+
+lr_model = LinearRegression()
+
+lr_model.fit(x_train, y_train)
+
+```
+
+Model evaluation
+
+```{python model evaluation}
+
+y_pred = lr_model.predict(x_test)
+
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+
+print(f'Mean Squared Error: {mse:.2f}')
+print(f'R2 Score: {r2:.2f}')
+
+```
+
+The `R2 Score` is `0.85`, which is good and `Mean Squared Error` is `0.06` which is also good for this model.
+
+Let's plot the predicted vs actual values.
+
+```{python predicted vs actual}
+
+sns.scatterplot(x=y_test, y=y_pred)
+plt.xlabel('Actual Price (log)')
+plt.ylabel('Predicted Price (log)')
+plt.title('Predicted vs Actual Price (log)')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], color='red', linestyle='--')
+plt.show()
+
+```
+
+## Model Featue Importance
+
+#### Random Forest Regressor Features
+
+We know that `RandomForestRegressor` is a tree based model, so we can use `feature_importances_` to get the importance of each feature.
+
+```{python feature importance}
+
+feature_importances = pd.DataFrame({'feature': df_model.drop(columns=['price_log']).columns, 'importance': rf_model.feature_importances_.round(4)})
+feature_importances = feature_importances.sort_values('importance', ascending=False)
+feature_importances.head(10)
+```
+
+#### Linear Regression Features
+
+We know that `LinearRegression` is a linear model, so we can use `coef_` to get the importance of each feature.
+
+```{python feature importance}
+
+feature_importances = pd.DataFrame({'feature': df_lr.drop(columns=['price_log']).columns, 'importance': lr_model.coef_.round(4)})
+feature_importances = feature_importances.sort_values('importance', ascending=False)
+feature_importances.head(10)
+
+```
+
+### Hyperparameter Tuning
+
+I will choose `RandomForestRegressor` for hyperparameter tuning as it has features which are easily explainable and a tree based model can be easily tunable.
+
+`GridSearchCV` is used to tune the hyperparameters of the model. `n_estimators` is the number of trees in the forest, `max_depth` is the maximum depth of the tree, `max_features` is the number of features to consider when looking for the best split.
+
+```{python hyperparameter tuning}
+#| echo: true
+#| output: false
+
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'n_estimators': [50, 100],
+    'max_depth': [20, 30],
+    'max_features': [5, 10, 15]
+}
+
+grid_search = GridSearchCV(estimator = rf_model, param_grid = param_grid, cv = 5, scoring = 'neg_mean_squared_error', verbose = 2)
+grid_search.fit(x_train, y_train)
+
+```
+
+```{python best parameters and score}
+
+print(grid_search.best_params_)
+print(grid_search.best_score_)
+
+```
+
+`grid_search.best_params_` gives the best parameters for the model depending on the scoring metric which is `neg_mean_squared_error` in this case.
+
+The best parameters are `n_estimators = 100`, `max_depth = 30`, `max_features = 15` and the best score is `-0.042`.
+
+```{python model training}
+
+rf_model = RandomForestRegressor(n_estimators = 100, max_depth = 30, max_features = 15)
+rf_model.fit(x_train, y_train)
+
+```
+
+```{python model evaluation}
+
+y_pred = rf_model.predict(x_test)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+print(f'Mean Squared Error: {mse:.2f}')
+print(f'R2 Score: {r2:.2f}')
+```
+
+Even after tuning the hyper parameters, the `R2 Score` is `0.88` and `Mean Squared Error` is `0.04` which is same as the previous model, but by using this model we can save memory and time.
+
+## Conclusion
+
+In this project, we successfully built a model to predict laptop prices based on various features. We explored the dataset, cleaned it, and extracted useful features. We built two models, `RandomForestRegressor` and `LinearRegression`, and compared their performance. The `RandomForestRegressor` performed better with an `R2 Score` of `0.88` and a `Mean Squared Error` of `0.04`. We also tuned the **hyper parameters** of the model to improve its performance.
+
+## Streamlit App
+
+The final model was deployed as a Streamlit app, which allows users to input laptop specifications and get the predicted price. The app is available at [Laptop Price Prediction App](https://laptoppricepredictor-fpmglpekowp6dpj9jwq2jj.streamlit.app/).
+
+Check out the app to see how it works and try it out with different laptop specifications.
