@@ -86,6 +86,8 @@ df.info()
 
 Now we have `1273` non-null entries in the dataset and no missing values. Let's check for duplicates in the data.
 
+### Checking for Duplicates
+
 ```{python duplicates}
 
 print(df.duplicated().sum())
@@ -118,7 +120,25 @@ df.describe(include='all')
 
 ```
 
-The dataset contains 11 columns with the following features: - **Company**: The brand of the laptop with 19 brands. - **TypeName**: The type of laptop, such as Ultrabook, Gaming, etc. - **Inches**: The size of the laptop screen in inches. - **ScreenResolution**: The resolution of the laptop screen. - **Cpu**: The type of CPU used in the laptop. - **Ram**: The amount of RAM in GB. - **Memory**: The type and size of storage memory (HDD/SSD). - **Gpu**: The type of GPU used in the laptop. - **OpSys**: The operating system installed on the laptop. - **Weight**: The weight of the laptop in kg. - **Price**: The price of the laptop in INR(Indian Rupees).
+The dataset contains 11 columns with the following features: - **Company**: The brand of the laptop with 19 brands.
+
+-   **TypeName**: The type of laptop, such as Ultrabook, Gaming, etc.
+
+-   **Inches**: The size of the laptop screen in inches.
+
+-   **ScreenResolution**: The resolution of the laptop screen.
+
+-   **Cpu**: The type of CPU used in the laptop. - **Ram**: The amount of RAM in GB.
+
+-   **Memory**: The type and size of storage memory (HDD/SSD).
+
+-   **Gpu**: The type of GPU used in the laptop.
+
+-   **OpSys**: The operating system installed on the laptop.
+
+-   **Weight**: The weight of the laptop in kg.
+
+-   **Price**: The price of the laptop in INR(Indian Rupees).
 
 ### Feature Extraction
 
@@ -153,7 +173,15 @@ print(df.gpu[88])
 
 ```
 
-we can seperate values in columns to form new parameters i.e, - `screenresolution` can give us `display_type`, `resolution` & `touchscreen` - `cpu` can be seperated to form `cpu` and `clockspeed` - `memory` can be seperated to form `memory` and `memory_type` - `gpu` can be seperated to get `gpu_company`
+we can seperate values in columns to form new parameters i.e,
+
+-   `screenresolution` can give us `display_type`, `resolution` & `touchscreen`
+
+-   `cpu` can be seperated to form `cpu` and `clockspeed`
+
+-   `memory` can be seperated to form `memory` and `memory_type`
+
+-   `gpu` can be seperated to get `gpu_company`
 
 #### `CPU` features
 
@@ -219,7 +247,7 @@ df[['gpu_brand', 'gpu_name']]
 
 ```
 
-#### `Memory Features` Features
+#### `Memory` Features
 
 Most of the laptops have two drives which need to be seperated and type of memory is also in the memory so we need to seperate them both after seperating the drives.
 
